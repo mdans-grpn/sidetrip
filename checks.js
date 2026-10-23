@@ -201,7 +201,8 @@ export function checkOffer(offer, option, trip) {
   const age = fp.match(/\b(18|21)\+|ages? (18|21) (and|or) (up|older)|must be (18|21)/i);
   if (age) add("info", `Age restricted (${age[1] || age[2] || age[5]}+).`);
   if (/same person/i.test(fp) && trip.group > 1 && option.unitBasis !== "person") add("info", "All services on one voucher must be used by the same person.");
-  if ((offer.unknown || []).length) add("info", `Not stated by the merchant: ${offer.unknown.join(", ")}.`);
+  const unknown = (offer.unknown || []).filter((u) => u !== "partySize"); // party size already reported above
+  if (unknown.length) add("info", `Not stated by the merchant: ${unknown.join(", ")}.`);
 
   const worst = findings.some((f) => f.level === "bad") ? "bad" : findings.some((f) => f.level === "warn") ? "warn" : "ok";
   return { findings, status: worst, price, dayRules };

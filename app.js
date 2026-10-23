@@ -143,7 +143,8 @@ function renderCard(c, trip) {
   node.querySelector(".option").textContent = `Option: ${option.title}`;
   const p = result.price;
   const orig = money(option.originalPrice);
-  let priceText = `${usd(p.total)} <span class="inr">(${inr(p.total)})</span> for ${trip.group}`;
+  const covers = p.party || option.unitBasis === "person" ? `for ${trip.group}` : `per voucher`;
+  let priceText = `${usd(p.total)} <span class="inr">(${inr(p.total)})</span> ${covers}`;
   if (p.units > 1) priceText += ` — ${p.units} × ${usd(p.unit)}`;
   if (orig && orig > p.unit) priceText += ` <span class="inr">· was ${usd(orig)} each</span>`;
   const promo = money(option.promoPrice);
