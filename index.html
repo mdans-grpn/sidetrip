@@ -4,14 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SideTrip — plan a US trip from live LivingSocial deals</title>
-  <meta name="description" content="Plan a US trip or gift for a friend from live LivingSocial offers. Every deal is checked against your dates, group size and the fine print before you pay on Groupon." />
+  <meta name="description" content="Plan a US trip, or a gift for a friend in the US, from live LivingSocial deals. Every deal is checked against your dates, your group and its fine print before you pay on Groupon." />
+  <meta property="og:title" content="SideTrip — deals that fit your dates" />
+  <meta property="og:description" content="A US trip planner that reads the fine print. Live LivingSocial deals, checked against your dates, group and budget. Pay on Groupon." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#0d6e4f" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d6e4f'/%3E%3Cpath d='M14 36l12 12 24-26' fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="top">
+  <header class="hero">
     <div class="wrap">
-      <h1>SideTrip</h1>
-      <p class="tag">Plan a US trip, or a gift for a friend in the US, from live LivingSocial deals. Each deal is checked against your dates, your group and its fine print <em>before</em> you pay on Groupon.</p>
+      <div class="brand"><span class="mark" aria-hidden="true">✓</span> SideTrip</div>
+      <h1>Deals that fit your dates.</h1>
+      <p class="lede">Plan a US trip, or a gift for a friend in the US, from live LivingSocial deals. Before anything reaches your plan it's checked against your <b>dates</b>, your <b>group</b>, its <b>stock</b>, its <b>weekday rules</b> and its <b>notice period</b>. You pay on Groupon.</p>
+      <div class="presets" role="group" aria-label="Example plans">
+        <span class="presets-label">Try one:</span>
+        <button type="button" class="chip" data-preset="parents">Parents visiting New York</button>
+        <button type="button" class="chip" data-preset="gift">Gift a spa day in Chicago</button>
+        <button type="button" class="chip" data-preset="vegas">Vegas weekend for 4</button>
+      </div>
     </div>
   </header>
 
@@ -45,7 +60,7 @@
         <label>Deals per day
           <select name="pace"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>
         </label>
-        <label class="span2">Interests <span class="hint">(comma separated, up to 5)</span>
+        <label class="span-all">Interests <span class="hint">(comma separated, up to 5)</span>
           <input name="interests" value="things to do, dinner, massage" required />
         </label>
       </div>
@@ -55,7 +70,7 @@
       </div>
     </form>
 
-    <section id="summary" class="card summary hidden"></section>
+    <section id="summary" class="card summary hidden" aria-live="polite"></section>
     <section id="plan"></section>
     <section id="bench" class="hidden">
       <h2>Didn't make the plan</h2>
@@ -66,7 +81,7 @@
 
   <footer class="wrap foot">
     <p>Offers are live US Groupon deals read through the <a href="https://agent.livingsocial.com/" rel="noopener">LivingSocial agent API</a>. You review the total and pay on Groupon. A purchase does <strong>not</strong> reserve a date or time. Promo prices are possible, not promised: Groupon decides at checkout. Prices can change before you check out.</p>
-    <p>Fine-print checks are automated and can miss things. Read the offer page before buying. Exchange rate is indicative. <a href="https://github.com/mdans-grpn/sidetrip" rel="noopener" id="repo-link">Source</a>.</p>
+    <p>Fine-print checks are automated and can miss things. Read the offer page before buying. Exchange rate is indicative. Built for agents too: see <a href="https://github.com/mdans-grpn/sidetrip/blob/main/for-agents.md" rel="noopener">for-agents.md</a>. <a href="https://github.com/mdans-grpn/sidetrip" rel="noopener">Source</a>.</p>
   </footer>
 
   <template id="offer-card">
@@ -76,12 +91,17 @@
         <div class="head">
           <span class="badge"></span>
           <span class="cat"></span>
+          <span class="age" title="When LivingSocial last read this price from Groupon"></span>
         </div>
         <h3 class="title"></h3>
         <p class="merchant"></p>
         <p class="option"></p>
         <p class="price"></p>
         <ul class="checks"></ul>
+        <details class="fineprint">
+          <summary>Read the fine print</summary>
+          <div class="fp-body"></div>
+        </details>
         <div class="links">
           <a class="buy" target="_blank" rel="noopener">Buy on Groupon</a>
           <a class="page" target="_blank" rel="noopener">Offer page</a>

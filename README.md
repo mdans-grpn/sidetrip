@@ -28,9 +28,26 @@ does both.
      and anything the merchant left unstated (`unknown`).
 4. It lays the deals out day by day, only on days the fine print allows,
    within budget, and totals them in USD and INR.
-5. "Share this plan" puts the whole plan in the URL. A friend in the US opens
+5. "Copy plan link" puts the whole plan in the URL. A friend in the US opens
    it, sees live prices re-checked at that moment, and pays on Groupon. The
    planner never touches payment.
+6. "Add to calendar" downloads an `.ics` with one all-day event per deal,
+   carrying the checks, the fine print and the buy link, so the plan travels
+   with you.
+7. "Copy prompt for your AI" hands the plan to any assistant connected to
+   LivingSocial's MCP server, which can put every pick in one cart (a browser
+   can't hold a shopping session). SideTrip plans; the LivingSocial agent
+   buys; the person pays.
+
+Each card also says when LivingSocial last saw the price ("price seen 14h
+ago") and opens the merchant's real fine print with the matched clauses
+highlighted, so you can see what the checker read.
+
+## For agents
+
+SideTrip is usable by agents as well as people: every input is a URL
+parameter and `run=1` builds the plan on load. See [for-agents.md](for-agents.md)
+and the Claude skill in [skills/sidetrip/SKILL.md](skills/sidetrip/SKILL.md).
 
 ## How to try it
 
