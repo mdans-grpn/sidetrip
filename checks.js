@@ -89,8 +89,9 @@ export function parseLeadDays(text) {
 export function inferPartySize(option) {
   const ps = option.partySize;
   if (ps && ps.people) return { people: ps.people, bound: ps.bound || "exactly", source: "api" };
-  const t = (option.title || "").toLowerCase();
-  let m = t.match(/\bfor\s+(?:up\s+to\s+)?(\d+)\b/) || t.match(/\b(\d+)\s+(?:guests?|people|persons?|adults?)\b/);
+  const words = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+  const t = (option.title || "").toLowerCase().replace(/\b(one|two|three|four|five|six)\b/g, (w) => words[w]);
+  let m = t.match(/\bfor\s+(?:up\s+to\s+)?(\d+)\b/) || t.match(/\b(\d+)\s+(?:guests?|people|persons?|adults?|admission tickets?|tickets?|general admissions?)\b/);
   if (m) return { people: Number(m[1]), bound: /up to/.test(t) ? "upTo" : "exactly", source: "title" };
   if (/couples?|for two|two people/.test(t)) return { people: 2, bound: "exactly", source: "title" };
   if (/for one|single|one person|1 person/.test(t)) return { people: 1, bound: "exactly", source: "title" };

@@ -108,12 +108,17 @@ function schedule(cands, trip) {
   };
   const usable = (c, day) => !used.has(c.offer.id) && c.result.status !== "bad" && fitsDay(c, day.date) && spent + c.result.price.total <= trip.budgetUsd;
   const take = (c, day) => { day.picks.push(c); used.add(c.offer.id); spent += c.result.price.total; };
+  // Soft per-day share of the budget so one pricey deal doesn't leave later days empty.
+  const dayShare = trip.budgetUsd / Math.max(shown.length, 1);
 
   for (const day of shown) {
-    // Pass 1: one pick per interest, rotating the starting interest each day.
+    // Pass 1: one pick per interest, rotating the starting interest each day,
+    // preferring deals that leave room for the other days.
     for (let k = 0; k < interests.length && day.picks.length < trip.pace; k++) {
       const interest = interests[(rr + k) % interests.length];
-      const c = cands.find((x) => x.interest === interest && usable(x, day));
+      const spentToday = day.picks.reduce((n, x) => n + x.result.price.total, 0);
+      const c = cands.find((x) => x.interest === interest && usable(x, day) && spentToday + x.result.price.total <= dayShare * 1.25)
+        || cands.find((x) => x.interest === interest && usable(x, day));
       if (c) take(c, day);
     }
     rr++;
