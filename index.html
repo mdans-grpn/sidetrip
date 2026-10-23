@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SideTrip — plan a US trip from live LivingSocial deals</title>
+  <meta name="description" content="Plan a US trip or gift for a friend from live LivingSocial offers. Every deal is checked against your dates, group size and the fine print before you pay on Groupon." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>SideTrip</h1>
+      <p class="tag">Plan a US trip, or a gift for a friend in the US, from live LivingSocial deals. Each deal is checked against your dates, your group and its fine print <em>before</em> you pay on Groupon.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <form id="plan-form" class="card form" autocomplete="off">
+      <div class="grid">
+        <label>City
+          <input name="city" list="cities" placeholder="e.g. New York" required />
+          <datalist id="cities">
+            <option>New York</option><option>Chicago</option><option>Las Vegas</option><option>Orlando</option>
+            <option>San Francisco</option><option>Los Angeles</option><option>Austin, TX</option><option>Miami</option>
+            <option>Seattle</option><option>Boston</option><option>Washington, DC</option><option>San Diego</option>
+            <option>Dallas</option><option>Houston</option><option>Atlanta</option><option>Denver</option>
+          </datalist>
+        </label>
+        <label>From
+          <input name="start" type="date" required />
+        </label>
+        <label>To
+          <input name="end" type="date" required />
+        </label>
+        <label>People
+          <input name="group" type="number" min="1" max="8" value="2" required />
+        </label>
+        <label>Budget
+          <div class="row">
+            <input name="budget" type="number" min="1" step="1" value="25000" required />
+            <select name="currency"><option>USD</option><option selected>INR</option></select>
+          </div>
+        </label>
+        <label>Deals per day
+          <select name="pace"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>
+        </label>
+        <label class="span2">Interests <span class="hint">(comma separated, up to 5)</span>
+          <input name="interests" value="things to do, dinner, massage" required />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="submit" id="go">Build my plan</button>
+        <span id="status" class="status" aria-live="polite"></span>
+      </div>
+    </form>
+
+    <section id="summary" class="card summary hidden"></section>
+    <section id="plan"></section>
+    <section id="bench" class="hidden">
+      <h2>Didn't make the plan</h2>
+      <p class="muted">Checked and set aside. Each one says why.</p>
+      <div id="bench-list"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>Offers are live US Groupon deals read through the <a href="https://agent.livingsocial.com/" rel="noopener">LivingSocial agent API</a>. You review the total and pay on Groupon. A purchase does <strong>not</strong> reserve a date or time. Promo prices are possible, not promised: Groupon decides at checkout. Prices can change before you check out.</p>
+    <p>Fine-print checks are automated and can miss things. Read the offer page before buying. Exchange rate is indicative. <a href="https://github.com/mdans/sidetrip" rel="noopener" id="repo-link">Source</a>.</p>
+  </footer>
+
+  <template id="offer-card">
+    <article class="offer">
+      <img class="thumb" alt="" loading="lazy" referrerpolicy="no-referrer" />
+      <div class="body">
+        <div class="head">
+          <span class="badge"></span>
+          <span class="cat"></span>
+        </div>
+        <h3 class="title"></h3>
+        <p class="merchant"></p>
+        <p class="option"></p>
+        <p class="price"></p>
+        <ul class="checks"></ul>
+        <div class="links">
+          <a class="buy" target="_blank" rel="noopener">Buy on Groupon</a>
+          <a class="page" target="_blank" rel="noopener">Offer page</a>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
