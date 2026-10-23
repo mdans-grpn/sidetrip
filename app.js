@@ -103,12 +103,13 @@ function readForm() {
   const end = parseDate(f.get("end"));
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const budget = Number(f.get("budget"));
-  const currency = f.get("currency");
+  const currency = f.get("currency") === "USD" ? "USD" : "INR";
+  const clamp = (v, lo, hi, dflt) => Math.min(hi, Math.max(lo, Number(v) || dflt));
   return {
     city: f.get("city").trim(),
     start, end, today,
-    group: Number(f.get("group")),
-    pace: Number(f.get("pace")),
+    group: clamp(f.get("group"), 1, 8, 2),
+    pace: clamp(f.get("pace"), 1, 3, 2),
     budgetUsd: currency === "INR" ? budget / fxRate : budget,
     currency, budget,
     interests: f.get("interests").split(",").map((s) => s.trim()).filter(Boolean).slice(0, MAX_INTERESTS),
@@ -131,16 +132,20 @@ function fillForm(s) {
 // (the headline option is listed first). Add-ons like drinks and candy lose to
 // real options so a movie offer doesn't become "one large candy".
 const ADDON_RE = /\b(candy|drink|soda|popcorn|snack|add-?on|upgrade|extra|gift card)\b/i;
+// Options for children, seniors, students or residents lose to general ones.
+const AUDIENCE_RE = /\b(child|children|kid|kids|senior|seniors|student|students|resident|residents|military|veterans?)\b/i;
 function bestOption(offer, trip) {
   let best = null;
   const options = (offer.options || []).filter((o) => o.buyUrl && o.price);
   const hasMain = options.some((o) => !ADDON_RE.test(o.title || ""));
+  const hasGeneral = options.some((o) => !AUDIENCE_RE.test(o.title || ""));
   options.forEach((option, i) => {
     const result = checkOffer(offer, option, trip);
     if (!result.price) return;
     const addon = hasMain && ADDON_RE.test(option.title || "") ? 1 : 0;
+    const narrow = hasGeneral && AUDIENCE_RE.test(option.title || "") ? 1 : 0;
     const bad = result.status === "bad" ? 2 : result.status === "warn" ? 1 : 0;
-    const rank = bad * 1000 + addon * 100 + i;
+    const rank = bad * 1000 + (addon + narrow) * 100 + i;
     if (!best || rank < best.rank) best = { option, result, rank };
   });
   return best;
@@ -164,10 +169,13 @@ function schedule(cands, trip) {
   const dayShare = trip.budgetUsd / Math.max(shown.length, 1);
   let rr = 0;
 
+  // Hard exclusions ("Not valid Saturdays") never place; time-qualified ones
+  // ("Not valid Saturdays after 6 p.m.") are avoided in the first pass only.
   const dayOk = (c, date, strict) => {
     const r = c.result.dayRules, dow = date.getDay();
     if (r.validDays && !r.validDays.has(dow)) return false;
-    if (strict && r.excludedDays.has(dow)) return false;
+    const ex = r.excludedDays.get(dow);
+    if (ex && (strict || !ex.timed)) return false;
     return true;
   };
   const usable = (c, day, strict) => !used.has(c.offer.id) && c.result.status !== "bad" && dayOk(c, day.date, strict) && spent + c.result.price.total <= trip.budgetUsd;
@@ -305,7 +313,7 @@ function renderPlan(plan, trip, picks) {
       <button type="button" class="secondary" id="ics">Add to calendar</button>
       <button type="button" class="secondary" id="agent">Copy prompt for your AI</button>
     </div>
-    <p class="note">Share the link with whoever pays: they see the same plan with prices re-checked live. The calendar file carries each deal's fine print and buy link. The AI prompt hands this plan to any assistant connected to LivingSocial's MCP server, which can build one cart for all of it.</p>`;
+    <p class="note">Share the link with whoever pays: they see the same plan, re-read from LivingSocial when they open it. The calendar file carries each deal's fine print and buy link. The AI prompt hands this plan to any assistant connected to LivingSocial's MCP server, which can build one cart for all of it.</p>`;
   $("#copy").addEventListener("click", (e) => copyText($(".tools input").value, e.target, "Copied"));
   $("#ics").addEventListener("click", () => downloadIcs(trip, plan));
   $("#agent").addEventListener("click", (e) => copyText(agentPrompt(trip, picks), e.target, "Prompt copied"));
@@ -370,7 +378,9 @@ function downloadIcs(trip, plan) {
     });
   });
   lines.push("END:VCALENDAR");
-  const blob = new Blob([lines.filter(Boolean).join("\r\n")], { type: "text/calendar" });
+  // RFC 5545 line folding: 75 octets max, continuation lines start with a space.
+  const folded = lines.filter(Boolean).map((l) => l.replace(/\r/g, "").match(/.{1,70}/gu).join("\r\n "));
+  const blob = new Blob([folded.join("\r\n")], { type: "text/calendar" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `sidetrip-${trip.city.toLowerCase().replace(/[^a-z]+/g, "-")}-${isoDay(trip.start)}.ics`;
@@ -398,7 +408,10 @@ function showSkeletons(n) {
 
 async function buildPlan() {
   const trip = readForm();
+  if (!trip.city) { setStatus("Add a US city."); return; }
+  if (Number.isNaN(trip.start.getTime()) || Number.isNaN(trip.end.getTime())) { setStatus("Dates need to be YYYY-MM-DD."); return; }
   if (trip.end < trip.start) { setStatus("The end date is before the start date."); return; }
+  if (!Number.isFinite(trip.budgetUsd) || trip.budgetUsd <= 0) { setStatus("Budget needs to be a number above zero."); return; }
   if (!trip.interests.length) { setStatus("Add at least one interest."); return; }
   $("#go").disabled = true;
   history.replaceState(null, "", location.pathname);
@@ -445,25 +458,36 @@ async function buildPlan() {
 }
 
 async function openShared(state) {
-  fillForm(state);
-  const trip = readForm();
-  setStatus("Opening a shared plan and re-checking prices…");
-  showSkeletons(Math.min(state.picks.length, 6));
-  const days = tripDays(trip);
-  const results = await pool(state.picks, READ_CONCURRENCY, async (p) => {
-    try {
-      const offer = await fullOffer(p.p, trip.city);
-      const option = (offer.options || []).find((o) => o.id === p.o) || offer.options?.[0];
-      if (!option) return null;
-      return { offer, option, result: checkOffer(offer, option, trip), interest: p.i, dayIndex: p.d };
-    } catch (e) { console.warn("shared offer missing", p.p, e); return null; }
-  });
-  const picks = results.filter(Boolean);
-  let spent = 0;
-  for (const c of picks) { if (days[c.dayIndex]) days[c.dayIndex].picks.push(c); spent += c.result.price?.total || 0; }
-  renderPlan({ days: days.slice(0, MAX_DAYS_SHOWN), hiddenDays: Math.max(days.length - MAX_DAYS_SHOWN, 0), spent, bench: [] }, trip, picks);
-  const missing = state.picks.length - picks.length;
-  setStatus(`Shared plan re-checked at ${new Date().toLocaleTimeString()}. Prices are live, not the ones the planner saw.${missing ? ` ${missing} offer${missing > 1 ? "s are" : " is"} no longer available.` : ""}`);
+  try {
+    if (!Array.isArray(state.picks)) throw new Error("this link has no plan in it");
+    fillForm(state);
+    const trip = readForm();
+    if (Number.isNaN(trip.start.getTime()) || Number.isNaN(trip.end.getTime())) throw new Error("the dates in this link are unreadable");
+    setStatus("Opening a shared plan and re-reading each offer from LivingSocial…");
+    showSkeletons(Math.min(state.picks.length, 6));
+    const days = tripDays(trip);
+    const results = await pool(state.picks, READ_CONCURRENCY, async (p) => {
+      try {
+        const offer = await fullOffer(p.p, trip.city);
+        const options = (offer.options || []).filter((o) => o.buyUrl && o.price);
+        const option = options.find((o) => o.id === p.o) || options[0];
+        if (!option) return null;
+        const result = checkOffer(offer, option, trip);
+        if (!result.price) return null;
+        return { offer, option, result, interest: p.i, dayIndex: Number(p.d) || 0 };
+      } catch (e) { console.warn("shared offer missing", p.p, e); return null; }
+    });
+    const picks = results.filter(Boolean);
+    let spent = 0;
+    for (const c of picks) { (days[c.dayIndex] || days[0]).picks.push(c); spent += c.result.price.total; }
+    renderPlan({ days: days.slice(0, MAX_DAYS_SHOWN), hiddenDays: Math.max(days.length - MAX_DAYS_SHOWN, 0), spent, bench: [] }, trip, picks);
+    const missing = state.picks.length - picks.length;
+    setStatus(`Shared plan re-read from LivingSocial at ${new Date().toLocaleTimeString()}. Prices are as LivingSocial last saw them, not what the planner saw.${missing ? ` ${missing} offer${missing > 1 ? "s are" : " is"} no longer available.` : ""}`);
+  } catch (e) {
+    console.error(e);
+    planEl.innerHTML = "";
+    setStatus(`Couldn't open this plan: ${e.message}.`);
+  }
 }
 
 // Presets: one click to a full plan. Dates are relative to today.
@@ -472,7 +496,7 @@ function presets() {
   return {
     parents: { city: "New York", start: d(21), end: d(24), group: 2, budget: 40000, currency: "INR", pace: 2, interests: "sightseeing tour, dinner, massage, museum" },
     gift: { city: "Chicago", start: d(14), end: d(15), group: 1, budget: 150, currency: "USD", pace: 2, interests: "massage, facial, brunch" },
-    vegas: { city: "Las Vegas", start: d(28), end: d(30), group: 4, budget: 600, currency: "USD", pace: 2, interests: "show tickets, dinner, things to do" },
+    vegas: { city: "Las Vegas", start: d(28), end: d(30), group: 4, budget: 600, currency: "USD", pace: 2, interests: "comedy show, dinner, things to do" },
   };
 }
 
